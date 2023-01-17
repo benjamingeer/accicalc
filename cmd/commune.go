@@ -26,15 +26,15 @@ accicalc commune --department 94 --commune 33 --cyclists
 }
 
 type CommuneOpts struct {
-	flags              *pflag.FlagSet
-	département        string
-	commune            uint
-	includePedestrians bool
-	includeCyclists    bool
-	includeOther       bool
-	limitToInjured     bool
-	limitToMinors      bool
-	outputFile         string
+	flags                   *pflag.FlagSet
+	département             string
+	commune                 uint
+	includePedestrians      bool
+	includeCyclists         bool
+	includeOthersInVehicles bool
+	includeUnharmed         bool
+	limitToMinors           bool
+	outputFile              string
 }
 
 var communeOpts = CommuneOpts{}
@@ -114,8 +114,8 @@ func init() {
 	_ = communeCmd.MarkFlagRequired("commune")
 	communeCmd.Flags().BoolVarP(&communeOpts.includePedestrians, "pedestrians", "r", false, "include pedestrians")
 	communeCmd.Flags().BoolVarP(&communeOpts.includeCyclists, "cyclists", "y", false, "include cyclists")
-	communeCmd.Flags().BoolVarP(&communeOpts.includeOther, "other", "t", false, "include other vehicle drivers/passengers")
-	communeCmd.Flags().BoolVarP(&communeOpts.limitToInjured, "injured", "i", false, "injured persons only")
+	communeCmd.Flags().BoolVarP(&communeOpts.includeOthersInVehicles, "other", "t", false, "include other vehicle drivers/passengers")
+	communeCmd.Flags().BoolVarP(&communeOpts.includeUnharmed, "unharmed", "i", false, "include unharmed persons")
 	communeCmd.Flags().BoolVarP(&communeOpts.limitToMinors, "minors", "m", false, "minors only")
 	communeCmd.Flags().StringVarP(&communeOpts.outputFile, "out", "o", "", "output file (defaults to standard out)")
 	rootCmd.AddCommand(communeCmd)
@@ -125,7 +125,7 @@ func init() {
 func pedestrians() error {
 	var maybeOutputFile *string
 
-	if !(communeOpts.includePedestrians || communeOpts.includeCyclists || communeOpts.includeOther) {
+	if !(communeOpts.includePedestrians || communeOpts.includeCyclists || communeOpts.includeOthersInVehicles) {
 		return errors.New("no user categories selected")
 	}
 
@@ -232,12 +232,12 @@ func pedestrians() error {
 
 func includePerson(accident *dataset.Accident, véhicule *dataset.Véhicule) func(usager *dataset.Usager) bool {
 	return func(usager *dataset.Usager) bool {
-		if !communeOpts.limitToInjured || !(usager.Gravité == dataset.GravitéNonRenseignée || usager.Gravité == dataset.Indemne) {
+		if communeOpts.includeUnharmed || !(usager.Gravité == dataset.GravitéNonRenseignée || usager.Gravité == dataset.Indemne) {
 			catégoriePersonne := getCatégoriePersonne(usager, véhicule)
 
 			return ((communeOpts.includePedestrians && catégoriePersonne == CatégoriePersonnePiéton) ||
 				(communeOpts.includeCyclists && catégoriePersonne == CatégoriePersonneCycliste) ||
-				(communeOpts.includeOther && catégoriePersonne == CatégoriePersonneAutre)) &&
+				(communeOpts.includeOthersInVehicles && catégoriePersonne == CatégoriePersonneAutre)) &&
 				(!communeOpts.limitToMinors || wasMinor(usager, accident))
 		} else {
 			return false
