@@ -11,32 +11,33 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var injuredCmd *cobra.Command = &cobra.Command{
-	Use:   "injured",
-	Short: "Generate a CSV file of people injured in accidents",
-	Long: `Generate a CSV file of people injured in accidents in a particular commune.
+var communeCmd *cobra.Command = &cobra.Command{
+	Use:   "commune",
+	Short: "Generate a CSV file of people involved in traffic accidents in a particular commune.",
+	Long: `Generate a CSV file of people involved in traffic accidents in a particular commune.
 Example:
 
-accicalc injured --department 94 --commune 33 --startYear 2021 --endYear 2021 --pedestrians
-	`,
+accicalc commune --department 94 --commune 33 --cyclists
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		handleError(pedestrians)
 	},
 	Args: cobra.NoArgs,
 }
 
-type InjuredOpts struct {
+type CommuneOpts struct {
 	flags              *pflag.FlagSet
 	département        string
 	commune            uint
 	includePedestrians bool
 	includeCyclists    bool
 	includeOther       bool
+	limitToInjured     bool
 	limitToMinors      bool
 	outputFile         string
 }
 
-var injuredOpts = InjuredOpts{}
+var communeOpts = CommuneOpts{}
 
 type CatégoriePersonne int
 
@@ -107,28 +108,29 @@ func (slice ByDate) Less(left, right int) bool { return slice[left].Date < slice
 func (slice ByDate) Swap(left, right int)      { slice[left], slice[right] = slice[right], slice[left] }
 
 func init() {
-	injuredCmd.Flags().StringVarP(&injuredOpts.département, "department", "p", "", "department code")
-	_ = injuredCmd.MarkFlagRequired("department")
-	injuredCmd.Flags().UintVarP(&injuredOpts.commune, "commune", "c", 0, "commune number")
-	_ = injuredCmd.MarkFlagRequired("commune")
-	injuredCmd.Flags().BoolVarP(&injuredOpts.includePedestrians, "pedestrians", "r", false, "include pedestrians")
-	injuredCmd.Flags().BoolVarP(&injuredOpts.includeCyclists, "cyclists", "y", false, "include cyclists")
-	injuredCmd.Flags().BoolVarP(&injuredOpts.includeOther, "other", "t", false, "include other vehicle drivers/passengers")
-	injuredCmd.Flags().BoolVarP(&injuredOpts.limitToMinors, "minors", "m", false, "minors only")
-	injuredCmd.Flags().StringVarP(&injuredOpts.outputFile, "out", "o", "", "output file (defaults to standard out)")
-	rootCmd.AddCommand(injuredCmd)
-	injuredOpts.flags = injuredCmd.Flags()
+	communeCmd.Flags().StringVarP(&communeOpts.département, "department", "p", "", "department code")
+	_ = communeCmd.MarkFlagRequired("department")
+	communeCmd.Flags().UintVarP(&communeOpts.commune, "commune", "c", 0, "commune number")
+	_ = communeCmd.MarkFlagRequired("commune")
+	communeCmd.Flags().BoolVarP(&communeOpts.includePedestrians, "pedestrians", "r", false, "include pedestrians")
+	communeCmd.Flags().BoolVarP(&communeOpts.includeCyclists, "cyclists", "y", false, "include cyclists")
+	communeCmd.Flags().BoolVarP(&communeOpts.includeOther, "other", "t", false, "include other vehicle drivers/passengers")
+	communeCmd.Flags().BoolVarP(&communeOpts.limitToInjured, "injured", "i", false, "injured persons only")
+	communeCmd.Flags().BoolVarP(&communeOpts.limitToMinors, "minors", "m", false, "minors only")
+	communeCmd.Flags().StringVarP(&communeOpts.outputFile, "out", "o", "", "output file (defaults to standard out)")
+	rootCmd.AddCommand(communeCmd)
+	communeOpts.flags = communeCmd.Flags()
 }
 
 func pedestrians() error {
 	var maybeOutputFile *string
 
-	if !(injuredOpts.includePedestrians || injuredOpts.includeCyclists || injuredOpts.includeOther) {
+	if !(communeOpts.includePedestrians || communeOpts.includeCyclists || communeOpts.includeOther) {
 		return errors.New("no user categories selected")
 	}
 
-	if injuredOpts.flags.Changed("out") {
-		maybeOutputFile = &injuredOpts.outputFile
+	if communeOpts.flags.Changed("out") {
+		maybeOutputFile = &communeOpts.outputFile
 	}
 
 	accidents, err := readAccidents()
@@ -138,7 +140,7 @@ func pedestrians() error {
 	}
 
 	filteredAccidents := dataset.Filter(accidents, func(accident *dataset.Accident) bool {
-		return accident.Département == injuredOpts.département && *accident.Commune == int(injuredOpts.commune)
+		return accident.Département == communeOpts.département && *accident.Commune == int(communeOpts.commune)
 	})
 
 	var personnes []Personne
@@ -202,7 +204,7 @@ func pedestrians() error {
 	sort.Sort(ByDate(personnes))
 	var rows []any
 
-	if injuredOpts.includePedestrians {
+	if communeOpts.includePedestrians {
 		rows = dataset.ToSliceOfAny(personnes)
 	} else {
 		var nonPiétons []PersonneNonPiéton
@@ -230,13 +232,13 @@ func pedestrians() error {
 
 func includePerson(accident *dataset.Accident, véhicule *dataset.Véhicule) func(usager *dataset.Usager) bool {
 	return func(usager *dataset.Usager) bool {
-		if !(usager.Gravité == dataset.GravitéNonRenseignée || usager.Gravité == dataset.Indemne) {
+		if !communeOpts.limitToInjured || !(usager.Gravité == dataset.GravitéNonRenseignée || usager.Gravité == dataset.Indemne) {
 			catégoriePersonne := getCatégoriePersonne(usager, véhicule)
 
-			return ((injuredOpts.includePedestrians && catégoriePersonne == CatégoriePersonnePiéton) ||
-				(injuredOpts.includeCyclists && catégoriePersonne == CatégoriePersonneCycliste) ||
-				(injuredOpts.includeOther && catégoriePersonne == CatégoriePersonneAutre)) &&
-				(!injuredOpts.limitToMinors || wasMinor(usager, accident))
+			return ((communeOpts.includePedestrians && catégoriePersonne == CatégoriePersonnePiéton) ||
+				(communeOpts.includeCyclists && catégoriePersonne == CatégoriePersonneCycliste) ||
+				(communeOpts.includeOther && catégoriePersonne == CatégoriePersonneAutre)) &&
+				(!communeOpts.limitToMinors || wasMinor(usager, accident))
 		} else {
 			return false
 		}
