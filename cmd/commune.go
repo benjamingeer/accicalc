@@ -32,7 +32,6 @@ type CommuneOpts struct {
 	includePedestrians      bool
 	includeCyclists         bool
 	includeOthersInVehicles bool
-	includeUnharmed         bool
 	limitToMinors           bool
 	outputFile              string
 }
@@ -115,7 +114,6 @@ func init() {
 	communeCmd.Flags().BoolVarP(&communeOpts.includePedestrians, "pedestrians", "r", false, "include pedestrians")
 	communeCmd.Flags().BoolVarP(&communeOpts.includeCyclists, "cyclists", "y", false, "include cyclists")
 	communeCmd.Flags().BoolVarP(&communeOpts.includeOthersInVehicles, "other", "t", false, "include other vehicle drivers/passengers")
-	communeCmd.Flags().BoolVarP(&communeOpts.includeUnharmed, "unharmed", "i", false, "include unharmed persons")
 	communeCmd.Flags().BoolVarP(&communeOpts.limitToMinors, "minors", "m", false, "minors only")
 	communeCmd.Flags().StringVarP(&communeOpts.outputFile, "out", "o", "", "output file (defaults to standard out)")
 	rootCmd.AddCommand(communeCmd)
@@ -232,16 +230,12 @@ func pedestrians() error {
 
 func includePerson(accident *dataset.Accident, véhicule *dataset.Véhicule) func(usager *dataset.Usager) bool {
 	return func(usager *dataset.Usager) bool {
-		if communeOpts.includeUnharmed || !(usager.Gravité == dataset.GravitéNonRenseignée || usager.Gravité == dataset.Indemne) {
-			catégoriePersonne := getCatégoriePersonne(usager, véhicule)
+		catégoriePersonne := getCatégoriePersonne(usager, véhicule)
 
-			return ((communeOpts.includePedestrians && catégoriePersonne == CatégoriePersonnePiéton) ||
-				(communeOpts.includeCyclists && catégoriePersonne == CatégoriePersonneCycliste) ||
-				(communeOpts.includeOthersInVehicles && catégoriePersonne == CatégoriePersonneAutre)) &&
-				(!communeOpts.limitToMinors || wasMinor(usager, accident))
-		} else {
-			return false
-		}
+		return ((communeOpts.includePedestrians && catégoriePersonne == CatégoriePersonnePiéton) ||
+			(communeOpts.includeCyclists && catégoriePersonne == CatégoriePersonneCycliste) ||
+			(communeOpts.includeOthersInVehicles && catégoriePersonne == CatégoriePersonneAutre)) &&
+			(!communeOpts.limitToMinors || wasMinor(usager, accident))
 	}
 }
 
