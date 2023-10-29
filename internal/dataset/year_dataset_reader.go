@@ -34,7 +34,7 @@ func init() {
 		YearDatasetReaders[year] = &yearDatasetReader1
 	}
 
-	for year := uint(2019); year <= 2021; year++ {
+	for year := uint(2019); year <= 2022; year++ {
 		YearDatasetReaders[year] = &yearDatasetReader2
 	}
 

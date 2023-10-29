@@ -14,7 +14,7 @@ var delimiter2 = ';'
 func (*YearDatasetReader2) ReadCharacteristics(year uint, dataPath string) (accidents []*Accident, err error) {
 	var baseName string
 
-	if year == 2021 {
+	if year >= 2021 {
 		baseName = "carcteristiques"
 	} else {
 		baseName = "caracteristiques"
@@ -23,7 +23,14 @@ func (*YearDatasetReader2) ReadCharacteristics(year uint, dataPath string) (acci
 	path := filepath.Join(dataPath, fmt.Sprint(year), fmt.Sprintf("%v-%v.csv", baseName, year))
 
 	convertRow := func(row map[string]string) (*Accident, error) {
-		idAccident, err := readColumn(row, "Num_Acc", path)
+		var idAccident string
+		var err error
+
+		if year >= 2022 {
+			idAccident, err = readColumn(row, "Accident_Id", path)
+		} else {
+			idAccident, err = readColumn(row, "Num_Acc", path)
+		}
 
 		if err != nil {
 			return nil, err
@@ -104,7 +111,7 @@ func (*YearDatasetReader2) ReadCharacteristics(year uint, dataPath string) (acci
 
 		var commune *int
 
-		if communeStr != "" {
+		if !(communeStr == "" || communeStr == "N/C") {
 			communeInt, err := strconv.Atoi(strings.TrimPrefix(communeStr, département))
 
 			if err != nil {
