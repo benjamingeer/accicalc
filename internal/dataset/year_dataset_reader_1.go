@@ -86,10 +86,6 @@ func (*YearDatasetReader1) ReadCharacteristics(year uint, dataPath string) (acci
 			)
 		}
 
-		if err != nil {
-			return nil, err
-		}
-
 		correctedAnInt := anInt + 2000
 
 		hrmn, err := readColumn(row, "hrmn", path)
@@ -199,7 +195,7 @@ func (*YearDatasetReader1) ReadCharacteristics(year uint, dataPath string) (acci
 			return nil, err
 		}
 
-		latitude := parseFixedPointLatLong(latitudeStr, idAccident, "lat")
+		latitude := parseFixedPointLatLong(latitudeStr)
 
 		longitudeStr, err := readColumn(row, "long", path)
 
@@ -207,7 +203,7 @@ func (*YearDatasetReader1) ReadCharacteristics(year uint, dataPath string) (acci
 			return nil, err
 		}
 
-		longitude := parseFixedPointLatLong(longitudeStr, idAccident, "long")
+		longitude := parseFixedPointLatLong(longitudeStr)
 
 		return &Accident{
 			IdAccident:  idAccident,
@@ -568,7 +564,7 @@ func (*YearDatasetReader1) ReadUsers(year uint, dataPath string) (users []*Usage
 	return readCsvFile(path, delimiter, convertRow)
 }
 
-func parseFixedPointLatLong(latLongStr string, idAccident string, colName string) string {
+func parseFixedPointLatLong(latLongStr string) string {
 	if len(latLongStr) < 2 {
 		return ""
 	} else {

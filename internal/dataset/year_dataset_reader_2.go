@@ -14,7 +14,9 @@ var delimiter2 = ';'
 func (*YearDatasetReader2) ReadCharacteristics(year uint, dataPath string) (accidents []*Accident, err error) {
 	var baseName string
 
-	if year >= 2021 {
+	if year >= 2023 {
+		baseName = "caract"
+	} else if year == 2021 || year == 2022 {
 		baseName = "carcteristiques"
 	} else {
 		baseName = "caracteristiques"
@@ -26,7 +28,7 @@ func (*YearDatasetReader2) ReadCharacteristics(year uint, dataPath string) (acci
 		var idAccident string
 		var err error
 
-		if year >= 2022 {
+		if year == 2022 {
 			idAccident, err = readColumn(row, "Accident_Id", path)
 		} else {
 			idAccident, err = readColumn(row, "Num_Acc", path)
