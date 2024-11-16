@@ -89,10 +89,6 @@ func (*YearDatasetReader2) ReadCharacteristics(year uint, dataPath string) (acci
 			)
 		}
 
-		if err != nil {
-			return nil, err
-		}
-
 		heure, err := readColumn(row, "hrmn", path)
 
 		if err != nil {
